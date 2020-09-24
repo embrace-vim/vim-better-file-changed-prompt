@@ -1,0 +1,238 @@
+" Streamline behavior when file is modified externally.
+" Author: Landon Bouma <https://tallybark.com/>
+" Online: https://github.com/landonb/vim-nicer-file-changed-shell
+" License: https://creativecommons.org/publicdomain/zero/1.0/
+"  vim:tw=0:ts=2:sw=2:et:norl:ft=vim
+" Copyright © 2020 Landon Bouma.
+
+" ########################################################################
+
+" DEV: Uncomment the 'unlet', then <F9> to reload this file.
+"       https://github.com/landonb/vim-source-reloader
+"  silent! unlet g:loaded_nicer_file_changed_prompt
+
+if exists("g:loaded_nicer_file_changed_prompt") || &cp
+  finish
+endif
+let g:loaded_nicer_file_changed_prompt = 1
+
+" ########################################################################
+
+" This plugin makes two changes to the FileChangedShell prompt behavior:
+"
+" 1. The default selected button is 'Load File', so you can just press
+"    Return (or Space) to reload the file, which is usually the action
+"    you want. (And it's easy to undo — Press Ctrl-z and the changes
+"    are undone).
+"
+" 2. The prompt is not shown for certain types of changes that you
+"    shouldn't care about, like permissions changes.
+
+" (lb): I made this plugin because I rebase source code often, and I
+" found myself needing to press Tab to switch the prompt button from
+" 'OK' to 'Load File'. And you know me, always reducing repetition.
+
+" ########################################################################
+
+" How it works
+" ------------
+"
+" - Intercept the file changed event, and only prompt the user for specific
+"   events, such as file modified, but automatically reload the file and do
+"   not prompt for other events, such as permissions or timestamp changed.
+"
+"   If the file was modified, use a confirm() dialog like Vim would normally
+"   do when a file is modified externally. Use the return value to set
+"   v:fcs_choice to tell Vim whether to reload the file or not, depending on
+"   what option the user chose.
+"
+"   But unlike the default Vim behavior, set the "Load File" button as the
+"   dialog default. The user will still have to acknowledge that a file was
+"   externally modified, but they can just press Enter to reload the file
+"   (and they don't have to press Tab or use the mouse to do so). This is
+"   assuming that most of the time, you want to reload the file if it was
+"   modified externally, because you were probably the one who modified it,
+"   which is why you've installed this plugin.
+
+" Caveat
+" ------
+"
+"   - There's a hack herein: When Vim reloads the modified file, it does
+"     not seem to trigger the buffer or file event handlers, and the file
+"     settings are not restored properly.
+"
+"     To fix this, the code uses a timer to help reload the file properly.
+"
+"     - (lb): Specifically, the `tabstop` setting was changed, and it was
+"       not reset according to any Vim modeline or `.editorconfig` file
+"       (which the dubs_style_guard BufEnter and BufRead handlers do).
+"
+"     - Note that the FileChangedShell event handler code is not allowed
+"       to actually change the buffer. I.e., that event handler cannot
+"       call `:edit` to reload the buffer, or to otherwise trigger the
+"       BufEnter or BufRead events.
+"
+"       As a hack, the code sets a timer to run a bit after the event
+"       handler. The timer function switches to the window with the buffer
+"       that changed and reloads it. Very much a hack, but, hey, welcome to
+"       How I Vim!
+"
+"     - Note that the issue happens when we set v:fcs_choice = "reload"
+"       and do not display the dialog. If we go ahead with the dialog,
+"       and change the default dialog choice to be "Load File", the
+"       tabstop issue does not happen. But the whole point of this is
+"       to avoid being prompted for reload *every single file* in a
+"       project after rebasing. And you should be encouraged to rebase,
+"       not discouraged. Rebase early, Rebase often, 'smy motto.
+
+" Ref.
+" ----
+"
+" - Inline:
+"
+"   :h FileChangedShell
+"
+"   :h fcs_choice
+"
+" - Online:
+"
+"   https://vim.fandom.com/wiki/File_no_longer_available_-_mark_buffer_modified
+
+" ########################################################################
+
+function! s:file_changed_event_should_ask()
+  let should_ask = 0
+
+  let aname = expand("<afile>:p")
+  let msg = 'File "' . l:aname . '"'
+  if v:fcs_reason == "deleted"
+    let msg .= " no longer available - maybe set 'modified'?"
+    " The tip sets modified... should we really?
+    "  call setbufvar(expand(l:aname), '&modified', '1')
+    echohl WarningMsg
+  elseif v:fcs_reason == "time"
+    " This is what git rebase causes.
+    let msg .= " timestamp changed"
+    " Tell caller not to prompt, but to automatically reload.
+    let should_ask = -1
+  elseif v:fcs_reason == "mode"
+    let msg .= " permissions changed"
+    " Tell caller not to prompt, but to automatically reload.
+    let should_ask = -1
+  elseif v:fcs_reason == "changed"
+    let msg .= " contents changed"
+    let should_ask = 1
+  elseif v:fcs_reason == "conflict"
+    let msg .= " CONFLICT --"
+    let msg .= " is modified, but"
+    let msg .= " was changed outside Vim"
+    let should_ask = 1
+    echohl ErrorMsg
+  else  " unknown values (future Vim versions?)
+    let msg .= " FileChangedShell reason="
+    let msg .= v:fcs_reason
+    let should_ask = 1
+    echohl ErrorMsg
+  endif
+
+  redraw!
+  echomsg msg
+  echohl None
+
+  return l:should_ask
+endfunction
+
+" ***
+
+let s:reload_bufnrs = []
+
+function! s:file_changed_event_handle()
+  " Eliminate unnecessary prompting, e.g., if timestamp changed, but not content.
+  let should_ask = s:file_changed_event_should_ask()
+
+  " If the "file changed" reason is timestamp changed, automatically reload.
+  if l:should_ask < 0
+    let v:fcs_choice = "reload"
+    " echom "Auto-reloading: " . expand("<afile>:p")
+
+    " Note that we cannot change the buffer during FileChangedShell callback.
+    " - E.g., calling edit:
+    "     execute "edit " . expand("<afile>:p")
+    "   will provoke the response:
+    "     E811: Not allowed to change buffer information now
+    " - However, that doesn't mean we can't use a hack: Set
+    "   a callback to reload the buffer, hopefully (250 msec)
+    "   after Vim finishes the event.
+    " - SOFAR/SOGOOD/2020-09-24: (lb): I added this code on 2020-07-02. So
+    "   far, it's been working fine, even the 250 msec. value I guessed at.
+    call add(s:reload_bufnrs, bufnr(expand("<afile>:p")))
+    let timer = timer_start(250, 'FileChangeApresReload')
+  else
+    call s:file_changed_event_prompt(l:should_ask)
+  endif
+endfunction
+
+" ***
+
+function! FileChangeApresReload(timer)
+  " echom "FileChangeApresReload: Reload count: " . len(s:reload_bufnrs)
+  let l:curbuf = bufnr()
+  for l:bufnum in s:reload_bufnrs
+    execute l:bufnum . "bufdo edit"
+  endfor
+  let s:reload_bufnrs = []
+  execute l:curbuf . "bufdo edit"
+endfunction
+
+" ***
+
+function! s:file_changed_event_prompt(should_ask)
+  " NOTE: From :h FileChangedShell:
+  "   NOTE: When this autocommand is executed, the
+  "   current buffer "%" may be different from the
+  "   buffer that was changed, which is in "<afile>".
+  " - That is, the bufname call you'd normally make is not the one to make:
+  "     let bufn = bufname("%")  " Not it!
+  let bufn = expand('<afile>')
+
+  " The usual message on Vanilla Vim is:
+  "   "Warning: File \"" . l:bufn . "\" has changed since editing started\n"See \":help W11\" for more info."
+  " 2020-09-24: (lb): I originally set different values for should_ask to
+  " indicate which condition was met, but there's an echom, too, that's plenty.
+  "   let confirmation_msg = "'Sup! “" . l:bufn . "” has changed. Just FYI! (should_ask: " . a:should_ask . ")"
+  let confirmation_msg = "Hey! “" . l:bufn . "” has changed. Hit Space or Enter to reload."
+
+  " Recreate a dialog similar to what Vim normally uses,
+  " - Set the default choice to the second button, "Load File".
+  let default_load = 2
+  " - Set the Dialog type: Error, Question, Info, [W]arning, or Generic.
+  let diaglog_type = "W"
+  let user_response = confirm(
+    \ l:confirmation_msg, "&OK\n&Load File", l:default_load, l:diaglog_type)
+
+  " (lb): The following SU.com article mentions calling `edit`, e.g.,
+  "   if l:user_response == 2 | edit | endif
+  " Though some readers suggest calling
+  "   edit <afile>
+  " Or
+  "   execute 'edit' fnameescape(l:bufn)
+  " - But we're not allowed to reload the buffer from the FileChangedShell
+  "   handler. See comments above. See also: :h fcs_choice.
+  " - Ref:
+  "     https://superuser.com/questions/731979/how-to-determine-what-buffer-was-changed-externally-with-gvim
+
+  if l:user_response == 2
+    let v:fcs_choice = "reload"
+  else
+    let v:fcs_choice = ""
+  endif
+endfunction
+
+" ########################################################################
+
+augroup MyAuGroup
+  autocmd MyAuGroup FileChangedShell * call <SID>file_changed_event_handle()
+augroup END
+
+" ########################################################################
+
