@@ -186,7 +186,7 @@ endfunction
 
 " ***
 
-function! s:file_changed_event_prompt(should_ask)
+function! s:file_changed_event_prompt()
   " NOTE: From :h FileChangedShell:
   "   NOTE: When this autocommand is executed, the
   "   current buffer "%" may be different from the
@@ -195,12 +195,10 @@ function! s:file_changed_event_prompt(should_ask)
   "     let l:bufn = bufname("%")  " Not it!
   let l:bufn = expand('<afile>')
 
-  " The usual message on Vanilla Vim is:
-  "   "Warning: File \"" . l:bufn . "\" has changed since editing started\n"See \":help W11\" for more info."
-  " 2020-09-24: (lb): I originally set different values for should_ask to
-  " indicate which condition was met, but there's an echom, too, that's plenty.
-  "   let confirmation_msg = "'Sup! “" . l:bufn . "” has changed. Just FYI! (should_ask: " . a:should_ask . ")"
-  let confirmation_msg = "Hey! “" . l:bufn . "” has changed. Hit Space or Enter to reload."
+  " The Vanilla Vim looks like:
+  "   "Warning: File \"" . l:bufn . "\" has changed since editing started\n"
+  "   \ . "See \":help W11\" for more info."
+  let l:confirmation_msg = "Hey! “" . l:bufn . "” has changed. Hit Space or Enter to reload."
 
   " Recreate a dialog similar to what Vim normally uses,
   " - Set the default choice to the second button, "Load File".
