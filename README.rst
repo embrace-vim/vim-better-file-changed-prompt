@@ -24,6 +24,10 @@ button to not reloading the file. If you're tired of seeing this dialog,
 and then pressing Tab or using the mouse to select 'Load File' instead of
 'OK', then this plugin is for you!
 
+NOTE: On Linux, pressing Space or Enter will accept the default dialog
+choice ("Load File"), but on macOS (MacVim), you'll want to press Return
+(as pressing Space will "OK" the dialog, which does not reload the file).
+
 Installation
 ============
 

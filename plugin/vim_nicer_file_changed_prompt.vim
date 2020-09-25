@@ -192,7 +192,22 @@ endfunction
 " we don't care about (like permissions).
 "
 " However, MacVim reverses the button order -- so OK is the #2 button.
-let s:button_index_load = has('macunix') ? 1 : 2
+"
+" But then, for whatever reason, the <Space> and <Return> behavior
+" flips, and now <Return> works to "Load File", and <Space> does not.
+function! s:file_changed_dialog_prepare()
+  if !has('macunix')
+    let s:button_index_load =  2
+    let s:dialog_loadf_hint = "Press Enter or Space to reload."
+  else
+    let s:button_index_load =  1
+    let s:dialog_loadf_hint = "Press Enter to reload."
+  endif
+endfunction
+
+call <SID>file_changed_dialog_prepare()
+
+" ***
 
 function! s:file_changed_event_prompt()
   " NOTE: From :h FileChangedShell:
@@ -206,7 +221,7 @@ function! s:file_changed_event_prompt()
   " The Vanilla Vim looks like:
   "   "Warning: File \"" . l:bufn . "\" has changed since editing started\n"
   "   \ . "See \":help W11\" for more info."
-  let l:confirmation_msg = "Hey! “" . l:bufn . "” has changed. Hit Space or Enter to reload."
+  let l:confirmation_msg = "Yo! “" . l:bufn . "” has changed. " . s:dialog_loadf_hint
 
   " Recreate a dialog similar to what Vim normally uses,
   " - Set the default choice to the second button, "Load File".
