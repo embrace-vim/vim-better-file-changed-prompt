@@ -228,9 +228,18 @@ endfunction
 
 " ########################################################################
 
-augroup MyAuGroup
-  autocmd MyAuGroup FileChangedShell * call <SID>file_changed_event_handle()
-augroup END
+function! s:setup_file_changed_prompt_handler()
+  augroup NicerFCPGroup
+    " Remove! group autocommands.
+    autocmd! NicerFCPGroup
+    " Setup group autocommands.
+    autocmd NicerFCPGroup FileChangedShell * call <SID>file_changed_event_handle()
+  augroup END
+endfunction
+
+" ########################################################################
+
+call <SID>setup_file_changed_prompt_handler()
 
 " ########################################################################
 
