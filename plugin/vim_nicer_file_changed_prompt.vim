@@ -186,6 +186,14 @@ endfunction
 
 " ***
 
+" Note that in MacVim, the system dialog sorta works the way we want
+" if you dismiss it with a <Space> (but not a <Return>, which does not
+" reload the file). But we still want to avoid the prompt for changes
+" we don't care about (like permissions).
+"
+" However, MacVim reverses the button order -- so OK is the #2 button.
+let s:button_index_load = has('macunix') ? 1 : 2
+
 function! s:file_changed_event_prompt()
   " NOTE: From :h FileChangedShell:
   "   NOTE: When this autocommand is executed, the
@@ -202,14 +210,14 @@ function! s:file_changed_event_prompt()
 
   " Recreate a dialog similar to what Vim normally uses,
   " - Set the default choice to the second button, "Load File".
-  let l:default_load = 2
+  let l:default_load = s:button_index_load
   " - Set the Dialog type: Error, Question, Info, [W]arning, or Generic.
   let l:diaglog_type = "W"
   let l:user_response = confirm(
     \ l:confirmation_msg, "&OK\n&Load File", l:default_load, l:diaglog_type)
 
   " (lb): The following SU.com article mentions calling `edit`, e.g.,
-  "   if l:user_response == 2 | edit | endif
+  "   if l:user_response == s:button_index_load | edit | endif
   " Though some readers suggest calling
   "   edit <afile>
   " Or
@@ -219,7 +227,7 @@ function! s:file_changed_event_prompt()
   " - Ref:
   "     https://superuser.com/questions/731979/how-to-determine-what-buffer-was-changed-externally-with-gvim
 
-  if l:user_response == 2
+  if l:user_response == s:button_index_load
     let v:fcs_choice = "reload"
   else
     let v:fcs_choice = ""
