@@ -101,7 +101,7 @@ let g:loaded_nicer_file_changed_prompt = 1
 " ########################################################################
 
 function! s:file_changed_event_should_ask()
-  let should_ask = 0
+  let l:should_ask = 0
 
   let aname = expand("<afile>:p")
   let msg = 'File "' . l:aname . '"'
@@ -114,24 +114,24 @@ function! s:file_changed_event_should_ask()
     " This is what git rebase causes.
     let msg .= " timestamp changed"
     " Tell caller not to prompt, but to automatically reload.
-    let should_ask = -1
+    let l:should_ask = -1
   elseif v:fcs_reason == "mode"
     let msg .= " permissions changed"
     " Tell caller not to prompt, but to automatically reload.
-    let should_ask = -1
+    let l:should_ask = -1
   elseif v:fcs_reason == "changed"
     let msg .= " contents changed"
-    let should_ask = 1
+    let l:should_ask = 1
   elseif v:fcs_reason == "conflict"
     let msg .= " CONFLICT --"
     let msg .= " is modified, but"
     let msg .= " was changed outside Vim"
-    let should_ask = 1
+    let l:should_ask = 1
     echohl ErrorMsg
   else  " unknown values (future Vim versions?)
     let msg .= " FileChangedShell reason="
     let msg .= v:fcs_reason
-    let should_ask = 1
+    let l:should_ask = 1
     echohl ErrorMsg
   endif
 
@@ -148,7 +148,7 @@ let s:reload_bufnrs = []
 
 function! s:file_changed_event_handle()
   " Eliminate unnecessary prompting, e.g., if timestamp changed, but not content.
-  let should_ask = s:file_changed_event_should_ask()
+  let l:should_ask = s:file_changed_event_should_ask()
 
   " If the "file changed" reason is timestamp changed, automatically reload.
   if l:should_ask < 0
@@ -166,9 +166,9 @@ function! s:file_changed_event_handle()
     " - SOFAR/SOGOOD/2020-09-24: (lb): I added this code on 2020-07-02. So
     "   far, it's been working fine, even the 250 msec. value I guessed at.
     call add(s:reload_bufnrs, bufnr(expand("<afile>:p")))
-    let timer = timer_start(250, 'FileChangeApresReload')
+    let l:timer = timer_start(250, 'FileChangeApresReload')
   else
-    call s:file_changed_event_prompt(l:should_ask)
+    call s:file_changed_event_prompt()
   endif
 endfunction
 
@@ -192,8 +192,8 @@ function! s:file_changed_event_prompt(should_ask)
   "   current buffer "%" may be different from the
   "   buffer that was changed, which is in "<afile>".
   " - That is, the bufname call you'd normally make is not the one to make:
-  "     let bufn = bufname("%")  " Not it!
-  let bufn = expand('<afile>')
+  "     let l:bufn = bufname("%")  " Not it!
+  let l:bufn = expand('<afile>')
 
   " The usual message on Vanilla Vim is:
   "   "Warning: File \"" . l:bufn . "\" has changed since editing started\n"See \":help W11\" for more info."
@@ -204,10 +204,10 @@ function! s:file_changed_event_prompt(should_ask)
 
   " Recreate a dialog similar to what Vim normally uses,
   " - Set the default choice to the second button, "Load File".
-  let default_load = 2
+  let l:default_load = 2
   " - Set the Dialog type: Error, Question, Info, [W]arning, or Generic.
-  let diaglog_type = "W"
-  let user_response = confirm(
+  let l:diaglog_type = "W"
+  let l:user_response = confirm(
     \ l:confirmation_msg, "&OK\n&Load File", l:default_load, l:diaglog_type)
 
   " (lb): The following SU.com article mentions calling `edit`, e.g.,
