@@ -175,13 +175,51 @@ endfunction
 " ***
 
 function! FileChangeApresReload(timer)
-  " echom "FileChangeApresReload: Reload count: " . len(s:reload_bufnrs)
+  if s:ActiveWindowIsProjectTray()
+    " See note above ActiveWindowIsProjectTray: Don't run `bufdo` from
+    " the project tray window.
+    " - Note that the user cannot close all but the project tray. If the only
+    "   two windows open are the project tray and a file, and the user tries
+    "   to close the file window, it'll close the project tray window instead.
+    "   - So if the project tray is open, there's always another window open.
+    "     (Also, the project tray window is always the first window, 1.)
+    execute (winnr() + 1) .. "wincmd  w"
+  endif
+
   let l:curbuf = bufnr()
+
+  " echom "FileChangeApresReload: Reload count: " . len(s:reload_bufnrs)
   for l:bufnum in s:reload_bufnrs
     execute l:bufnum . "bufdo edit"
   endfor
   let s:reload_bufnrs = []
   execute l:curbuf . "bufdo edit"
+endfunction
+
+" ***
+
+" This works around an issue calling `bufdo edit` from the project tray.
+" REFER:
+"   https://github.com/landonb/dubs_project
+" UCASE: Consider the user has a file open and rebases the repo wherein it
+" lives, causing file changes, but the file returns to the state it was last
+" in — So Vim will prompt about changes, but we don't want to annoy the user.
+" During the rebase, the user had their terminal in the foreground, and after
+" the rebase, the user clicks back to Vim. If the user clicks the project tray,
+" the `bufdo edit` call causes Vim to load a different buffer into the project
+" tray window, even though the buffer number is not the project tray buffer.
+" (And if you call `bufdo edit` on the project tray buffer, Vim retorts,
+" 'E32: No file name'.) So check if the current window is the project tray,
+" and change windows if that's the case.
+" - BWARE: Vim won't update the title bar until the user does something, i.e.,
+"   the titlebar will show the project tray filename (e.g., `.vimprojects`)
+"   until the user moves the cursor, presses Escape, starts editing, etc.
+function! s:ActiveWindowIsProjectTray()
+  if exists("g:proj_running") && (bufwinnr(g:proj_running) == winnr())
+    return 1
+  endif
+
+  return 0
 endfunction
 
 " ***
