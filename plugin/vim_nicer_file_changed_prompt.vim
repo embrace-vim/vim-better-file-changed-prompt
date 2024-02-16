@@ -191,9 +191,17 @@ function! FileChangeApresReload(timer)
   " echom "FileChangeApresReload: Reload count: " . len(s:reload_bufnrs)
   for l:bufnum in s:reload_bufnrs
     execute l:bufnum . "bufdo edit"
+
+    " Don't call `bufdo` twice on the same buffer.
+    if l:curbuf == l:bufnum
+      let l:curbuf = -1
+    endif
   endfor
   let s:reload_bufnrs = []
-  execute l:curbuf . "bufdo edit"
+
+  if l:curbuf != -1
+    execute l:curbuf . "bufdo edit"
+  endif
 endfunction
 
 " ***
