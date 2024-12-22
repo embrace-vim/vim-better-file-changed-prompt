@@ -7,13 +7,18 @@
 
 " ########################################################################
 
-" DEV: Uncomment the 'unlet', then <F9> to reload this file.
-"       https://github.com/landonb/vim-source-reloader
-"  silent! unlet g:loaded_nicer_file_changed_prompt
+" GUARD: Press <F9> to reload this plugin (or :source it).
+" - Via: https://github.com/embrace-vim/vim-source-reloader#↩️
+
+if expand("%:p") ==# expand("<sfile>:p")
+  unlet g:loaded_nicer_file_changed_prompt
+endif
 
 if exists("g:loaded_nicer_file_changed_prompt") || &cp
+
   finish
 endif
+
 let g:loaded_nicer_file_changed_prompt = 1
 
 " ########################################################################
