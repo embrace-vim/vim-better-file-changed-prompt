@@ -1,31 +1,191 @@
-*vim_nicer_file_changed_prompt.txt*	For Vim version 7.4.	Last change: 2020 Sep 24
+*vim-better-file-changed-prompt.txt*	Prompt Improvement	2024 Dec 22
 
-Vim Nicer File Changed Prompt~
+VIM BETTER FCP 🗯 File-Changed Prompt with "Load File" as Default ~
 
-NICER FILE CHANGED PROMPT		*vim-nicer-file-changed-prompt*
+BETTER FILE CHANGED PROMPT		*vim-better-file-changed-prompt*
 
-1. About This Plugin			|vim-nfcp-about|
+1. About This Plugin			|vim-better-file-changed-prompt-about|
+2. (Gory) Details			|vim-better-file-changed-prompt-details|
+3. Reference				|vim-better-file-changed-prompt-reference|
+4. Related Projects			|vim-better-file-changed-prompt-related-projects|
 
 ==============================================================================
-1. About This Plugin			*vim-nfcp-about*
+1. About This Plugin			*vim-better-file-changed-prompt-about*
 
-This plugin makes two changes to the FileChangedShell prompt behavior:
+This plugin change the default file-changed prompt so that
+pressing <Enter> loads the changes.
 
-1. The default selected button is 'Load File', so you can just press
-   Return (or Space) to reload the file, which is usually the action
-   you want. (And it's easy to undo — Press `Ctrl-z` and the changes
-   are undone).
+- The stock Vim prompt ignores changes by default (it does
+  not update the local buffer with the external changes).
 
-2. The prompt is not shown for certain types of changes that you
-   shouldn't care about, like permissions changes.
+- And if you decide you want the buffer version back, it's
+  easy to restore your local changes — just |:undo| (or
+  press <Ctrl-Z> if you fly with |mswin.vim|).
 
-USE CASE: If you rebase source code often, you'll find yourself needing
-to fix conflicts, but when a file is changed outside of Vim, Vim prompts
-you, asking if you want to reload it, but defaulting the selected dialog
-button to not reloading the file. If you're tired of seeing this dialog,
-and then pressing Tab or using the mouse to select 'Load File' instead of
-'OK', then this plugin is for you!
+Project page: https://github.com/embrace-vim/vim-better-file-changed-prompt#🗯
 
-Project page: https://github.com/landonb/vim_nicer_file_changed_shell
+==============================================================================
+2. (Gory) Details			*vim-better-file-changed-prompt-details*
+
+By default, Vim prompts you if a buffer you're working on
+was changed by an external program.
+
+But the default action (if you press <Enter>) is to ignore
+changes.
+
+At least in the author's experience, I'd usually rather load
+the changes. So I made this plugin to facilitate that workflow.
+
+On Linux~
+
+Here's a look at the default prompt on Linux Mint MATE: >
+
+  " Mac users can run this command from Vim to open the image:
+  :call system('open ' .. expand('%:h') .. '/MintMATE-FCS-prompt--builtin.png')
+<
+You'll notice the -ignore- action is labeled simply "OK",
+which you can pick by pressing <Enter> or <Space>, or
+by using the <Alt-O> accelerator. >
+
+  " This image shows how the accelerators work:
+  :call system('open ' .. expand('%:h') .. '/MintMATE-FCS-prompt-builtin--Accelerators.png')
+
+- If you'd like to pick "Load File", you can <Tab> first,
+  and then press <Enter> or <Space>, or you can use
+  the <Alt-L> or <Alt-A> accelerator.
+
+The prompt message is also a little wordy (IMHO).
+
+This plugin changes the prompt thusly: >
+
+  " Mac users can run this command from Vim to open the image:
+  :call system('open ' .. expand('%:h') .. '/MintMATE-FCS-prompt--better.png')
+<
+So now to load the changes, simple press <Enter> or
+<Space>, or use the <Alt-L> accelerator.
+
+The prompt message is also a smidgen more concise.
+
+On macOS~
+
+The gameplay on macOS is slightly different, and perhaps
+not as intuitive if you're more familiar with the Linux UX.
+
+Here's what the default prompt looks like in MacVim:
+  https://macvim.org/ >
+
+  " Mac users can run this command from Vim to open the image:
+  :call system('open ' .. expand('%:h') .. '/MacVim-FCS-prompt--builtin.png')
+<
+If you're not familiar with macOS dialog wiring:
+
+- The button with the -blue background- is picked
+  when you press <Enter>.
+
+- The button with the -blue border- is picked when
+  you press <Space>.
+
+- You can move the selected button with <Tab>.
+
+  - Regardless of the selected button, <Enter> will
+    -always- pick the "OK" button.
+
+- There are no accelerators defined (e.g., nothing like
+  the <Alt-L> you can use on Linux).
+
+This plugin changes the prompt thusly: >
+
+  " Mac users can run this command from Vim to open the image:
+  :call system('open ' .. expand('%:h') .. '/MacVim-FCS-prompt--better.png')
+<
+The prompt text is also less wordy than the default,
+and you'll also see a helpful little hint added to
+remind you how <Enter> and <Tab>/<Space> work on macOS.
+
+- And if you've read |W11| help once, you probably
+  don't need to be reminded of it every time.
+
+Some changes are automatically reloaded
+---------------------------------------
+
+Vim identifies at least six different types of changes:
+
+- The file on disk was deleted while a buffer is open.
+
+- The file timestamp was changed.
+
+- The file permissions were changed.
+
+- The file contents were changed, but the buffer has
+  not been |modified|.
+
+- The file contents were changed and the buffer has
+  local modifications.
+
+- The file on disk was -created- after a buffer with
+  that path was opened.
+
+  - This is actually a different prompt altogether
+    that is not scriptable (|W13|).
+
+If Vim notices that only the timestamp has changed, you
+won't notice. It will ignore the event and move on.
+
+- But it will notify this plugin. And it'll print a
+  short |message| to bleep you, but it won't prompt
+  you.
+
+- For those users that also use git-rebase, this
+  event occurs frequently when you rebase history.
+
+If Vim notices that the permissions have changed,
+the default is to always prompt you.
+
+- This plugin will not prompt you when permissions
+  change. [Although maybe it should, or at least if
+  the file is no longer writable or readable by the
+  user. But this seems like such a rare use case, we're
+  not gonna worry about that now. But please open an
+  Issue if this impacts you negatively]:
+
+  https://github.com/embrace-vim/vim-better-file-changed-prompt/issues
+
+For the remaining three cases — file deleted, changed,
+or conflicts — this plugin will prompt you as described
+earlier.
+
+==============================================================================
+3. Reference				*vim-better-file-changed-prompt-reference*
+
+Relevant Vim documentation for the *endlessly curious*:
+
+- |FileChangedShell|
+
+- |v:fcs_choice|
+
+- |v:fcs_reason|
+
+- |timestamp|
+
+- Vim Tip: File no longer available - mark buffer modified, by Ewfalor, 2008:
+
+  https://vim.fandom.com/wiki/File_no_longer_available_-_mark_buffer_modified
+
+  - This tip provides a simple |FileChangedShell| hander that was the basis
+    for this project's file-changed handler:
+
+    https://github.com/embrace-vim/vim-better-file-changed-prompt/blob/release/autoload/embrace/fcs_handler.vim
+
+==============================================================================
+4. Related Projects			*vim-better-file-changed-prompt-related-projects*
+
+- `interuptless.vim` — Makes vim interrupt you less
+
+  https://github.com/vim-utils/vim-interruptless
+
+- `vim-autoread` — Have Vim automatically reload a
+  file that has changed externally
+
+  https://github.com/djoshea/vim-autoread
 
  vim:tw=78:ts=8:ft=help:norl:
