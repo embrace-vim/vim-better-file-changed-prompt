@@ -12,7 +12,7 @@
 "   https://creativecommons.org/licenses/by-sa/3.0/
 "     vim-better-file-changed-prompt/LICENSE-CC-BY-SA-3.0
 
-" -------------------------------------------------------------------------
+" -------------------------------------------------------------------
 
 function! g:embrace#fcs_handler#FCSHandler() abort
   " Highlight group for echo.

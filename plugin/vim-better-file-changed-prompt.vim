@@ -4,7 +4,7 @@
 " License: License: CC0 1.0 <https://creativecommons.org/publicdomain/zero/1.0/>
 "   Copyright © 2020, 2024 Landon Bouma.
 
-" -------------------------------------------------------------------------
+" -------------------------------------------------------------------
 
 " GUARD: Press <F9> to reload this plugin (or :source it).
 " - Via: https://github.com/embrace-vim/vim-source-reloader#↩️
@@ -27,7 +27,7 @@ if get(g:, 'better_file_changed_prompt_disable', 0)
   finish
 endif
 
-" -------------------------------------------------------------------------
+" -------------------------------------------------------------------
 
 " CXREF:
 " ~/.vim/pack/embrace-vim/start/vim-better-file-changed-prompt/autoload/embrace/fcs_prompt.vim

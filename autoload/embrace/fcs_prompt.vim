@@ -4,7 +4,7 @@
 " License: License: CC0 1.0 <https://creativecommons.org/publicdomain/zero/1.0/>
 "   Copyright © 2020, 2024 Landon Bouma.
 
-" -------------------------------------------------------------------------
+" -------------------------------------------------------------------
 
 " This plugin makes two changes to the FileChangedShell prompt behavior:
 "
@@ -102,7 +102,7 @@
 "      tosses in an emoji character to help you grok what
 "      just happened more easily.
 
-" -------------------------------------------------------------------------
+" -------------------------------------------------------------------
 
 " How it works
 " ------------
@@ -147,7 +147,7 @@
 "    is immediately deleted again) and comparing the text.  If the text is equal,
 "    you will get no warning.
 
-" -------------------------------------------------------------------------
+" -------------------------------------------------------------------
 
 " - REFER: 'When this autocommand is executed, the
 "   current buffer "%" may be different from the
@@ -191,7 +191,7 @@ function! s:FCSPromptAutoEdit(echohl, msg, fpath) abort
   let v:fcs_choice = 'edit'
 endfunction
 
-" -------------------------------------------------------------------------
+" -------------------------------------------------------------------
 
 " Note that MacVim reverses the button order — So the first choice is
 " printed second (on the right).
@@ -315,7 +315,7 @@ function! s:PrepareDialog()
   endif
 endfunction
 
-" -------------------------------------------------------------------------
+" -------------------------------------------------------------------
 
 " Show an ephemeral message while the dialog is showing. (Not that
 " the user is likely to notice, at least on MacVim the window dims
@@ -370,7 +370,7 @@ function! s:FCSPromptEchomAfter(echohl, msg, fpath, flare)
     \ '')})
 endfunction
 
-" -------------------------------------------------------------------------
+" -------------------------------------------------------------------
 
 function! s:CreateAutocmd_FileChangedShell() abort
   augroup BetterFCSGroup
@@ -381,7 +381,7 @@ function! s:CreateAutocmd_FileChangedShell() abort
   augroup END
 endfunction
 
-" -------------------------------------------------------------------------
+" -------------------------------------------------------------------
 
 function! g:embrace#fcs_prompt#Run() abort
   call s:PrepareDialog()
