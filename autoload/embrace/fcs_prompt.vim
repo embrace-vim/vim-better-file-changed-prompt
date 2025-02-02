@@ -159,7 +159,7 @@
 
 function! g:embrace#fcs_prompt#FCSPrompt() abort
   " CXREF:
-  " ~/.vim/pack/embrace-vim/start/vim-better-file-changed-prompt/autoload/embrace/fcs_handler.vim
+  " ~/.kit/nvim/embrace-vim/start/vim-better-file-changed-prompt/autoload/embrace/fcs_handler.vim
   let [l:echohl, l:msg, l:prompt, l:flare] = g:embrace#fcs_handler#FCSHandler()
 
   let l:fpath = substitute(expand('<afile>:p'), '^' .. expand('$HOME'), '~', '')

@@ -30,6 +30,6 @@ endif
 " -------------------------------------------------------------------
 
 " CXREF:
-" ~/.vim/pack/embrace-vim/start/vim-better-file-changed-prompt/autoload/embrace/fcs_prompt.vim
+" ~/.kit/nvim/embrace-vim/start/vim-better-file-changed-prompt/autoload/embrace/fcs_prompt.vim
 call g:embrace#fcs_prompt#Run()
 
