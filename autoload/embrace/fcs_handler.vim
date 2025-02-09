@@ -19,7 +19,7 @@ function! g:embrace#fcs_handler#FCSHandler() abort
   let l:echohl = ''
   " For echom messages and confirm().
   let l:msg = ''
-  " Internal value, one of: '', 'ask'.
+  " Internal value, one of: '', 'load', 'ignore'.
   let l:prompt = ''
   " Caller sets v:fcs_choice if l:prompt != ''
   let l:fcs_choice = 'edit'
@@ -80,8 +80,17 @@ function! g:embrace#fcs_handler#FCSHandler() abort
   elseif v:fcs_reason == 'changed'
     " NTRST: If FCS handler returns v:fcs_choice='', buffer doesn't reload,
     " but changes to the file itself such as modeline will take effect!
-    let l:echohl = 'DiffChange'
-    let l:prompt = 'ask'
+    "
+    " USAGE: Set g:better_fcs_prompt_autoread_changes = 0
+    "        if you'd rather be prompted (with Load Changes
+    "        as the default).
+    if get(g:, 'better_fcs_prompt_autoread_changes', 1)
+      let l:echohl = 'WildMenu'
+      let l:prompt = ''
+    else
+      let l:echohl = 'DiffChange'
+      let l:prompt = 'load'
+    endif
     let l:msg = 'File changed!'
     let l:flare = '📠'
   elseif v:fcs_reason == 'conflict'
@@ -89,13 +98,13 @@ function! g:embrace#fcs_handler#FCSHandler() abort
     " MAYBE: Perhaps the default action when *conflicts* should
     " be opposite, to ignore changes?
     let l:echohl = 'ErrorMsg'
-    let l:prompt = 'ask'
+    let l:prompt = 'ignore'
     let l:msg = 'Conflicts outside Vim!!'
     let l:flare = '💥'
   else
     " Unknown reason (future Vim versions?)
     let l:echohl = 'ErrorMsg'
-    let l:prompt = 'ask'
+    let l:prompt = 'ignore'
     let l:msg = 'UNKNOWN event: v:fcs_reason=' .. v:fcs_reason
     let l:flare = '🧘'
   endif

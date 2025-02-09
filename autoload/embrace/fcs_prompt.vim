@@ -166,9 +166,9 @@ function! g:embrace#fcs_prompt#FCSPrompt() abort
 
   if l:prompt == ''
     call s:FCSPromptAutoChoose(l:fcs_choice)
-  elseif l:prompt == 'ask'
+  elseif l:prompt != ''
     " Sets v:fcs_choice = 'edit' or '', depending on user interaction.
-    call s:FCSPromptPromptUser(l:echohl, l:msg, l:fpath)
+    call s:FCSPromptPromptUser(l:echohl, l:msg, l:fpath, l:prompt)
 
     if v:fcs_choice == 'edit'
       let l:msg = 'Loaded changes'
@@ -252,10 +252,15 @@ endfunction
 "     "Warning: File \"" .. l:afile .. "\" has changed since editing started\n"
 "     \ .. "See \":help W11\" for more info."
 
-function! s:FCSPromptPromptUser(echohl, msg, fpath)
-  call s:FCSPromptEchoEphemeral(a:echohl, a:msg)
+" Neovim in terminal and Neovide GUI both use message area and each print
+" the same prompt when conflicts are detected:
+"
+"   W12: Warning: File "{filename}" has changed and the buffer was changed in Vim as well
+"   See ":help W12" for more info.
+"   [O]K, (L)oad File, Load File (a)nd Options:
 
-  let l:dialog_msg = a:msg .. "\n\n" .. a:fpath .. s:dialog_loadf_hint
+function! s:FCSPromptPromptUser(echohl, msg, fpath, prompt)
+  call s:FCSPromptEchoEphemeral(a:echohl, a:msg)
 
   " Dialog type options:
   " - With MATE dialog icons noted:
@@ -268,21 +273,19 @@ function! s:FCSPromptPromptUser(echohl, msg, fpath)
   " - Though in MacVim at least Error and Warning look the same.
   let l:diaglog_type = (a:echohl == 'ErrorMsg') && 'Error' || 'Warning'
 
-  if has('macunix')
-    " In MacVim, Ignore button is first (on the left), then Load File.
-    let l:choices = "&Load File\n&Ignore"
-  else
-    let l:choices = "&Ignore\n&Load File"
-  endif
+  let [l:choices, l:default_index, l:msg_postfix] = s:PrepareDialog(a:prompt)
+
+  let l:dialog_msg = a:msg .. "\n\n" .. a:fpath .. l:msg_postfix
 
   let l:user_response = confirm(
     \ l:dialog_msg,
     \ l:choices,
-    \ s:button_index_load,
+    \ l:default_index,
     \ l:diaglog_type
     \ )
 
-  if l:user_response == s:button_index_load
+  if (l:user_response == l:default_index && a:prompt == 'load')
+    \ || (l:user_response != l:default_index && a:prompt == 'ignore')
     let v:fcs_choice = 'edit'
   else
     let v:fcs_choice = ''
@@ -291,7 +294,60 @@ endfunction
 
 " ***
 
-function! s:PrepareDialog()
+function! s:PrepareDialog(prompt)
+  let l:choices = ''
+  let l:default_index =  2
+  let l:msg_postfix = ''
+
+  let l:load_name = 'Load File'
+  " let l:keep_name = 'Ignore'
+  let l:keep_name = 'Keep Mine'
+
+  if has('macunix') || !has('gui_running')
+    " In MacVim, the button order is backwards in the GUI —
+    " the first option in {choices} is positioned on the right.
+    " - And, as noted above, MacVim doesn't honor the index value.
+    "   - <Enter> will always send 1.
+    "   - <Space> will send index of button with highlight.
+    "     - 2nd button is initially highlighted, and the highlight
+    "       can be moved with <Tab>.
+    " On the other hand, if no GUI is running, make the first choice
+    " the default, which seems more intuitive. Also because there
+    " are only two choices, so it's not obvious which letter input
+    " corresponds to the default, e.g., in you saw this prompt:
+    "   (L)oad File, [I]gnore:
+    " what would you assume will happen if you press <Enter>?
+    " (Though you probably know that it's the square brackets
+    "  like it is in lots of other GUI prompts, but it's still
+    "  not obvious when there's just two choices. E.g., this
+    "    (L)oad File, [I]gnore, (S)omething Else
+    "  makes it more obvious.)
+    let l:default_index =  1
+    " The Ignore button is first (on the left), then Load File.
+    let l:default_load = "&" .. l:load_name .. "\n&" .. l:keep_name
+    " When Ignore is the default, put it on the right.
+    let l:default_ignore = "&" .. l:keep_name .. "\n&" .. l:load_name
+  else
+    " In Linux Mint MATE, <Space> and <Enter> each return l:default_index.
+    " - And <Tab> doesn't work, but <Alt-I> [Ignore] and <Alt-L> [Load File]
+    "   work.
+    let l:default_index =  2
+    " In Linux, we put the option for the default second, and it appears
+    " as the button on the right in the GUI.
+    let l:default_load = "&" .. l:keep_name .. "\n&" .. l:load_name
+    let l:default_ignore = "&" .. l:load_name .. "\n&" .. l:keep_name
+  endif
+
+  if a:prompt == 'load'
+    let l:choices = l:default_load
+  elseif a:prompt == 'ignore'
+    let l:choices = l:default_ignore
+  else
+    echom 'GAFFE: FCSPromptPromptUser: Unknown value: a:prompt=' .. a:prompt
+  endif
+
+  let l:action = (a:prompt == 'load') ? 'Load File' : 'Ignore'
+
   if !has('gui_running')
     " Don't add anything. E.g., user will see this in their message window:
     "   File changed!
@@ -299,32 +355,24 @@ function! s:PrepareDialog()
     "   ~/path/to/file
     "
     "   [L]oad File, (I)gnore:
-    let s:dialog_loadf_hint = "\n"
-    " Ignored
-    let s:button_index_load =  1
+    let l:msg_postfix = "\n"
   elseif has('macunix')
-    " DUNNO: I only use MacVim, so not sure if the dialog is different on
-    " other flavors of Vim on Mac.
+    " DUNNO: I've only used MacVim on macOS, so I'm not sure if the
+    " dialog is different on other flavors of Vim on Mac.
     " - Because we might want to adjust this accordingly, e.g.,
     "     if has('gui_macvim') | ... | elseif has('osxdarwin') | ...
-    " let s:dialog_loadf_hint = "\n\nEnter to Load File\nTab/Space follows highlight"
-    let s:dialog_loadf_hint = "\n\n<Enter> to Load File\n<Tab>/<Space> follows highlight"
-    " As noted above, MacVim doesn't honor the index value.
-    " - <Enter> will always send 1.
-    " - <Space> will send index of button with highlight.
-    "   - Defaults 2nd button, can be moved with <Tab>.
-    let s:button_index_load =  1
+    " Here's also the text without the <key> ornamentation:
+    "   let l:msg_postfix = "\n\nEnter to Load File\nTab/Space follows highlight"
+    let l:msg_postfix = "\n\n<Enter> to " .. l:action .. "\n<Tab>/<Space> follows highlight"
   else
-    " Interestingly, just a few extra character will make dialog 50% wider:
-    "   let s:dialog_loadf_hint = "\n\nPress <Enter> or <Space> to Load File"
+    " Interestingly, just a few extra chars will make vim-gtk (MATE) dialog 50% wider:
+    "   let l:msg_postfix = "\n\nPress <Enter> or <Space> to Load File"
     " Compared to this:
-    "   let s:dialog_loadf_hint = "\n\nPress Enter or Space to reload"
-    let s:dialog_loadf_hint = "\n\nPress Enter or Space to Load File"
-    " In Linux Mint MATE, <Space> and <Enter> each return s:button_index_load.
-    " - And <Tab> doesn't work, but <Alt-I> [Ignore] and <Alt-L> [Load File]
-    "   work.
-    let s:button_index_load =  2
+    "   let l:msg_postfix = "\n\nPress Enter or Space to reload"
+    let l:msg_postfix = "\n\nPress Enter or Space to " .. l:action
   endif
+
+  return [l:choices, l:default_index, l:msg_postfix]
 endfunction
 
 " -------------------------------------------------------------------
@@ -396,7 +444,6 @@ endfunction
 " -------------------------------------------------------------------
 
 function! g:embrace#fcs_prompt#Run() abort
-  call s:PrepareDialog()
   call s:CreateAutocmd_FileChangedShell()
 endfunction
 
