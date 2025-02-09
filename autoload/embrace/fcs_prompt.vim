@@ -427,16 +427,43 @@ endfunction
 function! s:FCSPromptEchomAfter(echohl, msg, fpath, flare)
   let l:full_msg = a:msg .. ' ' .. a:flare .. ' ' .. a:fpath
 
+  " If multiple files are changed, user only sees the last message. So we'll
+  " add an extra message indicating as much.
+  if !exists('s:file_changed_count')
+    let s:file_changed_count = 1
+    let s:changes_echo_count = 0
+  else
+    let s:file_changed_count += 1
+  endif
+
   " Neovide: With 0-timeout, e.g., timer_state(0, ...), nvim requests
   " confirmation, like a multi-line message would.
   " - A 1-delay shows the message without prompting for confirmation.
 
   " SAVVY: By default, execute() is "silent". Pass empty second arg to "unsilence".
   call timer_start(1, { -> execute(
-    \ 'echohl ' .. a:echohl ..
-    \ " | echom '" .. l:full_msg .. "'" ..
-    \ ' | echohl None',
+    \ 'call FCSPromptEchomAfterCallback('
+    \   .. '"' .. escape(a:echohl, '"') .. '", '
+    \   .. '"' .. escape(l:full_msg, '"') .. '")',
     \ '')})
+endfunction
+
+function! FCSPromptEchomAfterCallback(echohl, full_msg)
+  execute 'echohl ' .. a:echohl
+  echom a:full_msg
+  echohl None
+
+  let s:changes_echo_count += 1
+  if s:changes_echo_count == s:file_changed_count
+    if s:file_changed_count > 1
+      echohl DiffChange
+      echom 'Multiple external files changed! See :messages for details'
+      echohl None
+    endif
+
+    unlet! s:file_changed_count
+    unlet! s:changes_echo_count
+  endif
 endfunction
 
 " -------------------------------------------------------------------
