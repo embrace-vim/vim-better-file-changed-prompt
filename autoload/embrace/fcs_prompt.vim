@@ -162,7 +162,7 @@ function! g:embrace#fcs_prompt#FCSPrompt() abort
   " ~/.kit/nvim/embrace-vim/start/vim-better-file-changed-prompt/autoload/embrace/fcs_handler.vim
   let [l:echohl, l:msg, l:prompt, l:flare] = g:embrace#fcs_handler#FCSHandler()
 
-  let l:fpath = substitute(expand('<afile>:p'), '^' .. expand('$HOME'), '~', '')
+  let l:fpath = s:FCSPromptExpandFilePath()
 
   if l:prompt == ''
     " Sets v:fcs_choice = 'edit'.
@@ -184,6 +184,10 @@ function! g:embrace#fcs_prompt#FCSPrompt() abort
 endfunction
 
 " ***
+
+function! s:FCSPromptExpandFilePath() abort
+  return substitute(expand('<afile>:p'), '^' .. expand('$HOME'), '~', '')
+endfunction
 
 function! s:FCSPromptAutoEdit(echohl, msg, fpath) abort
   " There's also just 'reload' which doesn't do all the stuff,
