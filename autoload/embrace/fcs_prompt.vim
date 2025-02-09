@@ -417,8 +417,9 @@ endfunction
 "
 " But if we set a 0-timeout timer, we'll print after the Vim message. (We win!)
 "
-" REFER: See also FileChangedShellPost. Using a timer precludes us from adding
-" another autocmd, and also caching the message (e.g., s:pending_msgs = [...]).
+" REFER: See also FileChangedShellPost, though if we printed a message from
+" that auto command, we'd have to figure out what happened. It's easier to
+" report now, even if a little kludgy.
 
 function! s:FCSPromptEchomAfter(echohl, msg, fpath, flare)
   let l:full_msg = a:msg .. ' ' .. a:flare .. ' ' .. a:fpath
