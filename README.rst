@@ -2,72 +2,48 @@
 File-Changed Prompt with "Load File" as Default 🗯
 ##################################################
 
-This plugin change the default file-changed prompt so that
-pressing ``<Enter>`` loads the changes.
+This plugin adjusts the default file-changed prompt.
 
-- The stock Vim prompt ignores changes by default (it does
-  not update the local buffer with the external changes).
+- You probably don't need this plugin it you're happy with |autoread|_.
 
-- And if you decide you want the buffer version back, it's
-  easy to restore your local changes — just ``:undo`` (or
-  press ``<Ctrl-Z>`` if you fly with |mswin.vim|_).
+  - If you're running Vim, ``autoread`` is not enabled by default.
 
-.. |mswin.vim| replace:: ``mswin.vim``
-.. _mswin.vim: https://vimhelp.org/gui_w32.txt.html#mswin.vim
+    - Run ``set autoread`` and be happy.
 
-(Gory) Details
-==============
+  - If you're running Neovim, you're all set.
+
+But if you want a few quality of life improvements,
+sure, maybe check out this plugin!
+
+- For ``vim-gtk`` and MacVim, it makes the prompt a
+  little less wordy.
+
+  - For MacVim specifically, it hints at how to use
+    the somewhat confusing UX (*there are two buttons
+    highlighted in blue — so what does pressing <Enter>
+    do??*)
+
+- It adds additional alerts where (Neo)Vim is otherwise
+  silent.
+
+  - For example, when |autoread|_ is enabled, if a buffer
+    is unchanged but its external file changes, Vim loads
+    the changes and prints a message.
+
+    But in Neovim, nothing is printed.
+
+    This plugin restores that message.
+
+.. |autoread| replace:: ``autoread``
+.. _autoread: https://vimhelp.org/options.txt.html#autoread
+
+Prompt Differences
+==================
 
 By default, Vim prompts you if a buffer you're working on
 was changed by an external program.
 
-But the default action (if you press ``<Enter>``) is to ignore
-changes.
-
-At least in the author's experience, I'd usually rather load
-the changes. So I made this plugin to facilitate that workflow.
-
-On Linux
---------
-
-Here's a look at the default prompt on Linux Mint MATE:
-
-.. image:: doc/MintMATE-FCS-prompt--builtin.png
-   :alt: Default Mint MATE file-changed prompt
-   :align: center
-
-You'll notice the *ignore* action is labeled simply "OK",
-which you can pick by pressing ``<Enter>`` or ``<Space>``, or
-by using the ``<Alt-O>`` accelerator.
-
-.. image:: doc/MintMATE-FCS-prompt-builtin--Accelerators.png
-   :alt: The prompt accelerators when Alt is pressed
-   :align: center
-
-- If you'd like to pick "Load File", you can ``<Tab>`` first,
-  and then press ``<Enter>`` or ``<Space>``, or you can use
-  the ``<Alt-L>`` or ``<Alt-A>`` accelerator.
-
-The prompt message is also a little wordy (IMHO).
-
-This plugin changes the prompt thusly:
-
-.. image:: doc/MintMATE-FCS-prompt--better.png
-   :alt: Improved Mint MATE file-changed prompt
-   :align: center
-
-So now to load the changes, simple press ``<Enter>`` or
-``<Space>``, or use the ``<Alt-L>`` accelerator.
-
-The prompt message is also a smidgen more concise.
-
-On macOS
---------
-
-The gameplay on macOS is slightly different, and perhaps
-not as intuitive if you're more familiar with the Linux UX.
-
-Here's what the default prompt looks like in `MacVim <https://macvim.org/>`__:
+Here's a look at the default prompt on macOS in `MacVim <https://macvim.org/>`__:
 
 .. image:: doc/MacVim-FCS-prompt--builtin.png
    :alt: Default MacVim file-changed prompt
@@ -87,7 +63,7 @@ If you're not familiar with macOS dialog wiring:
     *always* pick the "OK" button.
 
 - There are no accelerators defined (e.g., nothing like
-  the ``<Alt-L>`` you can use on Linux).
+  an ``<Alt-L>`` accelerator you might find on Linux).
 
 This plugin changes the prompt thusly:
 
@@ -95,9 +71,9 @@ This plugin changes the prompt thusly:
    :alt: Improved MacVim file-changed prompt
    :align: center
 
-The prompt text is also less wordy than the default,
-and you'll see a helpful little hint added to
-remind you how ``<Enter>`` and ``<Tab>``/``<Space>`` work on macOS.
+You'll see that the prompt text is a little less wordy than the
+default, and there's a helpful little hint added to remind you
+how ``<Enter>`` and ``<Tab>``/``<Space>`` work on macOS.
 
 - And if you've read |help-W11|_ once, you probably
   don't need to be reminded of it every time.
@@ -105,8 +81,11 @@ remind you how ``<Enter>`` and ``<Tab>``/``<Space>`` work on macOS.
 .. |help-W11| replace:: ``:help W11``
 .. _help-W11: https://vimhelp.org/message.txt.html#W11
 
-Some changes are automatically reloaded
----------------------------------------
+In the other Vims — Linux GVim, terminal ``vim``, and terminal
+``nvim`` — you'll see similar changes to the prompt.
+
+The different types of Vim file changes
+=======================================
 
 Vim identifies at least six different types of changes:
 
@@ -128,11 +107,23 @@ Vim identifies at least six different types of changes:
   - This is actually a different prompt altogether
     that is not scriptable (|help-W13|_).
 
-If Vim notices that only the timestamp has changed, you
-won't notice. It will ignore the event and move on.
+How this plugin handles each of those file changes
+--------------------------------------------------
 
-- But it will notify this plugin. And it'll print a
-  short `message
+If Vim notices that a file is deleted while a buffer is open,
+it alerts, ``E211: File "{filepath}" no longer available``,
+but it doesn't prompt.
+
+- If the file is created again, Vim doesn't announce it,
+  unless the local buffer has changes.
+
+  - So this plugin emits a message when the deleted file
+    has since been *undeleted*.
+
+If Vim notices that only the timestamp has changed, it
+won't alert you. It will ignore the event and move on.
+
+- This plugin will instead print a short `message
   <https://vimhelp.org/message.txt.html#%3Amessages>`__
   to bleep you, |because-what-the-hay|_ (but it won't
   prompt you).
@@ -141,20 +132,35 @@ won't notice. It will ignore the event and move on.
   frequently when you rebase history.
 
 If Vim notices that the permissions have changed,
-the default is to always prompt you.
+the Vim default is to always prompt you.
 
 - This plugin will *not* prompt you when permissions
   change. [Although maybe it should, or at least if
   the file is no longer writable or readable by the
-  user. But this seems like such a rare use case, we're
-  not gonna worry about that now. But please open an
-  `Issue
+  user. But that's a rare use case we're not gonna
+  worry about. But please open an `Issue
   <https://github.com/embrace-vim/vim-better-file-changed-prompt/issues>`__
   if this impacts you negatively.]
 
-For the remaining three cases — file deleted, changed,
-or conflicts — this plugin will prompt you as described
-earlier.
+If Vim notices external changes and the local buffer
+has not been modified, it'll print a message like you'd
+normally see when you edit a file, e.g.,:
+
+  ``"file" 3L, 9B``
+
+- Interestingly, in Neovim, nothing is messaged. Neovim
+  silently loads changes.
+
+- This plugin prints an alert like Vim does, but telling you
+  explicitly what happened (unlike, e.g., ``"file" 3L, 9B``),
+  and colorfully, too (imagine the following with a yellow
+  background, for example), e.g.,:
+
+  ``File changed! 📠 /path/to/file``
+
+Finally, when conflicts are detected, this plugin will prompt
+you, just like Vim or Neovim does, regardless of ``autoread``,
+albeit with the dialog changes described earlier.
 
 .. |help-modified| replace:: ``:help modified``
 .. _help-modified: https://vimhelp.org/options.txt.html#%27modified%27
@@ -181,6 +187,8 @@ Relevant Vim documentation for the *endlessly curious*:
 
 - |help-timestamp|_
 
+- |help-autoread|_
+
 - Vim Tip: *File no longer available - mark buffer modified*, by *Ewfalor*, 2008:
 
   `https://vim.fandom.com/wiki/File_no_longer_available_-_mark_buffer_modified
@@ -201,6 +209,30 @@ Relevant Vim documentation for the *endlessly curious*:
 
 .. |help-timestamp| replace:: ``:h timestamp``
 .. _help-timestamp: https://vimhelp.org/editing.txt.html#timestamp
+
+.. |help-autoread| replace:: ``:h autoread``
+.. _help-autoread: https://vimhelp.org/options.txt.html#%27autoread%27
+
+So, like, *Why?*
+================
+
+I originally made this plugin because I wanted to be prompted
+when external changes happened, even if there was no conflict,
+so that I could choose what to do. But I wanted the default
+choices to be opposite Vim's — e.g., if ``set noautoread`` and
+Vim shows the conflict prompt, the default is to Keep Changes,
+but I wanted the default to be Load File.
+
+- So when no conflicts, I wanted to be able to hit <Enter> to
+  load changes.
+
+- But when there were conflicts, I wanted to be able to hit
+  <Enter> to ignore changes.
+
+Nowadays, I prefer ``autoload`` behavior — not to be prompted
+when there are external changes but not conflicts, but to just
+load changes — but I also like the additional messages provided
+by this plugin.
 
 Related Projects
 ================
