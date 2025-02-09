@@ -348,7 +348,7 @@ function! s:PrepareDialog(prompt)
 
   let l:action = (a:prompt == 'load') ? 'Load File' : 'Ignore'
 
-  if !has('gui_running')
+  if !has('gui_running') || has('nvim')
     " Don't add anything. E.g., user will see this in their message window:
     "   File changed!
     "
@@ -396,7 +396,10 @@ endfunction
 "     [L]oad File, (I)gnore:
 
 function! s:FCSPromptEchoEphemeral(echohl, msg)
-  if !has('gui_running')
+  " Both terminal Vim and Neovim (incl. Neovide GUI) uses messages
+  " area prompt, not GUI popup — So don't duplicate the message
+  " before the prompt.
+  if !has('gui_running') || has('nvim')
 
     return
   endif
@@ -415,7 +418,7 @@ endfunction
 "   Timestamp changed — ~/path/to/some/README.rst
 "   "README.rst" 492L, 32191B
 "
-" But if we set a 0-timeout timer, we'll print after the Vim message. (We win!)
+" But if we use a timer callback, we'll print after the Vim message. (We win!)
 "
 " REFER: See also FileChangedShellPost, though if we printed a message from
 " that auto command, we'd have to figure out what happened. It's easier to
@@ -424,7 +427,11 @@ endfunction
 function! s:FCSPromptEchomAfter(echohl, msg, fpath, flare)
   let l:full_msg = a:msg .. ' ' .. a:flare .. ' ' .. a:fpath
 
-  call timer_start(0, { -> execute(
+  " Neovide: With 0-timeout, e.g., timer_state(0, ...), nvim requests
+  " confirmation, like a multi-line message would.
+  " - A 1-delay shows the message without prompting for confirmation.
+
+  call timer_start(1, { -> execute(
     \ 'echohl ' .. a:echohl ..
     \ " | echom '" .. l:full_msg .. "'" ..
     \ ' | echohl None',
@@ -444,7 +451,16 @@ endfunction
 
 " -------------------------------------------------------------------
 
+" Vim default is noautoread, but in Neovim it's enabled by default.
+" - Here we disable autoread, otherwise FileChangeShell is not called.
+" - Our plugin emulates the behavior when autoload is enabled, but it
+"   doesn't change how Vim/Neovim normally behaves. It just modifies
+"   the UX, tweaking prompt and alert messages, and it adds additional
+"   messages.
+
 function! g:embrace#fcs_prompt#Run() abort
   call s:CreateAutocmd_FileChangedShell()
+
+  set noautoread
 endfunction
 
