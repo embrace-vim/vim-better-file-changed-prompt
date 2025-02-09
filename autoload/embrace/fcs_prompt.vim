@@ -431,6 +431,7 @@ function! s:FCSPromptEchomAfter(echohl, msg, fpath, flare)
   " confirmation, like a multi-line message would.
   " - A 1-delay shows the message without prompting for confirmation.
 
+  " SAVVY: By default, execute() is "silent". Pass empty second arg to "unsilence".
   call timer_start(1, { -> execute(
     \ 'echohl ' .. a:echohl ..
     \ " | echom '" .. l:full_msg .. "'" ..
