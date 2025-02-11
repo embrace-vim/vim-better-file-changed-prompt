@@ -171,9 +171,11 @@ function! g:embrace#fcs_prompt#FCSPrompt() abort
     call s:FCSPromptPromptUser(l:echohl, l:msg, l:fpath, l:prompt)
 
     if v:fcs_choice == 'edit'
+      let l:echohl = 'DiffAdd'
       let l:msg = 'Loaded changes'
       let l:flare = '💫'
     else
+      let l:echohl = 'DiffDelete'
       let l:msg = 'Ignored changes'
       let l:flare = '👀'
     endif
