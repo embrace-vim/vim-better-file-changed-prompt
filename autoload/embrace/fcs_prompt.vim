@@ -181,7 +181,7 @@ function! g:embrace#fcs_prompt#FCSPrompt() abort
     endif
   endif
 
-  call s:FCSPromptEchomAfter(l:echohl, l:msg, l:fpath, l:flare)
+  call s:FCSPromptEchomAfter(l:prompt, l:echohl, l:msg, l:fpath, l:flare)
 endfunction
 
 " ***
@@ -426,46 +426,73 @@ endfunction
 " that auto command, we'd have to figure out what happened. It's easier to
 " report now, even if a little kludgy.
 
-function! s:FCSPromptEchomAfter(echohl, msg, fpath, flare)
+function! s:FCSPromptEchomAfter(prompt, echohl, msg, fpath, flare)
   let l:full_msg = a:msg .. ' ' .. a:flare .. ' ' .. a:fpath
 
-  " If multiple files are changed, user only sees the last message. So we'll
-  " add an extra message indicating as much.
-  if !exists('s:file_changed_count')
-    let s:file_changed_count = 1
-    let s:changes_echo_count = 0
-  else
-    let s:file_changed_count += 1
+  if !exists('s:changes_accumulator')
+    let s:changes_accumulator = []
+  endif
+  call add(s:changes_accumulator, [a:echohl, l:full_msg])
+
+  " SAVVY: In Neovide, with 0-timeout, e.g., timer_state(0, ...), nvim
+  " requests confirmation, like a multi-line message would.
+  " - A 1-delay shows the message without prompting for confirmation.
+  " - Or ~250 msec. if confirm() was called (not sure why though!).
+
+  " SAVVY: By default, execute() is "silent".
+  " - Pass empty second arg to "unsilence".
+
+  let l:delay = 1
+  if a:prompt != ''
+    let l:delay = 250
+
+    " If multiple events and one or more called confirm(),
+    " ensure longer delay is used.
+    if exists('s:report_timer')
+      call timer_stop(s:report_timer)
+
+      unlet! s:report_timer
+    endif
   endif
 
-  " Neovide: With 0-timeout, e.g., timer_state(0, ...), nvim requests
-  " confirmation, like a multi-line message would.
-  " - A 1-delay shows the message without prompting for confirmation.
-
-  " SAVVY: By default, execute() is "silent". Pass empty second arg to "unsilence".
-  call timer_start(1, { -> execute(
-    \ 'call FCSPromptEchomAfterCallback('
-    \   .. '"' .. escape(a:echohl, '"') .. '", '
-    \   .. '"' .. escape(l:full_msg, '"') .. '")',
-    \ '')})
+  if !exists('s:report_timer') || empty(timer_info(s:report_timer))
+    let s:report_timer = timer_start(
+      \ l:delay,
+      \ 'g:embrace#fcs_prompt#FCSPromptEchomAfterCallback'
+      \ )
+  endif
 endfunction
 
-function! FCSPromptEchomAfterCallback(echohl, full_msg)
-  execute 'echohl ' .. a:echohl
-  echom a:full_msg
-  echohl None
+" We need to accumulate messages, otherwise if confirm() called and
+" user had to answer prompt, if there's more than one timer_start
+" callback, each echom requires user confirmation. Or, if we accumulate
+" messages and print them all at once, each echom requires confirmation,
+" unless we wait a split second before printing messages.
 
-  let s:changes_echo_count += 1
-  if s:changes_echo_count == s:file_changed_count
-    if s:file_changed_count > 1
-      echohl DiffChange
-      echom 'Multiple external files changed! See :messages for details'
-      echohl None
+function! g:embrace#fcs_prompt#FCSPromptEchomAfterCallback(timer_id)
+  let l:n_changes = len(s:changes_accumulator)
+  let l:i_change = 1
+
+  for [l:echohl, l:full_msg] in s:changes_accumulator
+    let l:count = ''
+    if l:n_changes > 1
+      let l:count = '[' .. l:i_change .. '/' .. l:n_changes .. '] '
     endif
+    let l:i_change += 1
 
-    unlet! s:file_changed_count
-    unlet! s:changes_echo_count
+    execute 'echohl ' .. l:echohl
+    echom l:count .. l:full_msg
+    echohl None
+  endfor
+
+  if l:n_changes > 1
+    echohl DiffChange
+    echom 'Multiple (' .. l:n_changes .. ') external files changed — See :messages for details'
+    echohl None
   endif
+
+  unlet! s:changes_accumulator
+  unlet! s:report_timer
 endfunction
 
 " -------------------------------------------------------------------
