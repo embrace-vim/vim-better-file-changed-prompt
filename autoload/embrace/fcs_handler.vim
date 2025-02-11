@@ -34,7 +34,10 @@ function! g:embrace#fcs_handler#FCSHandler() abort
   "   sometimes not, failing, e.g., E94: No matching buffer for 1
   "   - So stick with <afile>.
   "   let l:bufnr = expand('<abuf>')
-  let l:bname = expand('<afile>:p')
+  " SAVVY: Note that bufnr({name}) and getbufvar({name})/setbufvar({name})
+  " will match another buffer that starts with the same name, so add a regex
+  " word boundary.
+  let l:bname = expand('<afile>:p') .. '\>'
 
   let l:vim_fcs_prompt_file_deleted = 0
 
